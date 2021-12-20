@@ -4,7 +4,7 @@ import time
 import datetime
 import threading
 
-token = ""
+token = "Nzg2MzA5ODg5NjIxNDkxNzUy.X9EiJg.PUuNWUYBf2W8iPWn0SqMfNYI3k0"
 textkanalid = 851900460867911690
 messageid = 860582224423419995
 ipadresse = 'mc.finnkrause.com'
