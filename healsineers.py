@@ -1,5 +1,6 @@
 import discord
 
+
 class MyClient(discord.Client):
     async def on_ready(self):
         print("Benecke und Schrammel!")
@@ -9,13 +10,16 @@ class MyClient(discord.Client):
             return
         elif (":BENECKEEEEE:" in message.content):
             await message.channel.send(" <:SCHRAMMEL:844214310837420074>")
-            print(message.content + "      "+  message.author)
+            print(str(message.author) + ": " + message.content)
         elif (":SCHRAMMEL:" in message.content):
             await message.channel.send("<:BENECKEEEEE:844214027072962570>")
-            print(message.content + "      "+  str(message.author))
+            print(str(message.author) + ": " + message.content)
         else:
-            print(message.content + "      "+  str(message.author))
-            pass
-    
+            print(str(message.author) + ": " + message.content)
+
+
 client = MyClient()
-client.run("token")
+token = ""
+with open("./token.txt", "r") as r:
+    token = r.readline()
+client.run(token)

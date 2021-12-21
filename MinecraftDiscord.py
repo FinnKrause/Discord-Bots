@@ -4,73 +4,132 @@ import time
 import datetime
 import threading
 
-token = "Nzg2MzA5ODg5NjIxNDkxNzUy.X9EiJg.PUuNWUYBf2W8iPWn0SqMfNYI3k0"
 textkanalid = 851900460867911690
-messageid = 860582224423419995
+messageid = 922580759108259960
 ipadresse = 'mc.finnkrause.com'
-checkaddr = '192.168.178.42'
-neu = ''
-port = 25565
 port_testserver = 3000
-path = "/home/pi/started.txt"
-startedby = "" 
-laststate = ""
+
+StartedMainServerPath = "./started.txt"
+StartedNewServerPath = "./NewServerStarted.txt"
+
+startedby = ""
+lastMessage = ""
+currentMessage = ""
 
 Durchlauf = 0
 
+
 class MyClient(discord.Client):
+    def checkServer(self, adress, port) -> str:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        result = sock.connect_ex((adress, port))
+        sock.settimeout(None)
+        return result
+
+    def getStartedBy(self, fileName) -> str:
+        returnvalue = ""
+        with open(fileName, "r") as read:
+            returnvalue = read.readline()
+        return returnvalue
+
+    def getDiscordFormattedText(self, TextArray) -> str:
+        value = "> ⠀\n"
+        for i in TextArray:
+            value += "> "+i + "\n"
+        value += "> ⠀\n"
+        return value
+
+    def isPCon(self) -> bool:
+        socketsheesh = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socketsheesh.settimeout(5)
+        myres = socketsheesh.connect_ex(("192.168.178.42", port_testserver))
+        socketsheesh.settimeout(None)
+        return myres == 0
+
+    def getOnlineMessage(self, adresse, started, Servername) -> str:
+        returnvalue = self.getDiscordFormattedText(
+            [Servername+" ist **online!**", "IP: " + adresse, "gestartet: "+started])
+        return returnvalue
+
+    def getOfflineMessage(self, isPCon, Servername) -> str:
+        returnvalue = ""
+        if (isPCon):
+            returnvalue = self.getDiscordFormattedText(
+                [Servername + " ist **offline**!", "bereit: **!server start " + str(Servername).lower() + "**"])
+        else:
+            returnvalue = self.getDiscordFormattedText(
+                [Servername+" ist **offline**!"])
+        return returnvalue
+
     async def on_ready(self):
-        global laststate
-        global neu
+        global lastMessage
         global Durchlauf
+        global currentMessage
+
         print("Bot is online")
         channel = client.get_channel(textkanalid)
         message = await channel.fetch_message(messageid)
-        await client.change_presence(activity = discord.Game("Made by Hendrik und Finn"))
+        await client.change_presence(activity=discord.Game("Made by Hendrik und Finn"))
+
         try:
             while True:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(5)
-                result = sock.connect_ex((checkaddr, port))
-                sock.settimeout(None)
-                with open(path, "r") as read:
-                    startedby = read.readline()
-                if result == 0:
-                    if laststate != "online" :
-                        await message.edit(content = f"> \n> Minecraft Server ist **online!**\n> IP: {ipadresse}   {neu}\n> gestartet: {startedby}\n> ⠀") #Startedby
-                        print("[ " + str(datetime.datetime.now()) + " ] Server online [--> Updated]")
+                resMainServer = self.checkServer("192.168.178.42", 25565)
+                resNewServer = self.checkServer("192.168.178.42", 25566)
+
+                startedMainServer = self.getStartedBy(StartedMainServerPath)
+                startedNewServer = self.getStartedBy(StartedNewServerPath)
+
+                lastMessage = currentMessage
+                currentMessage = ""
+                isPCon = self.isPCon()
+
+                if resMainServer == 0 or resNewServer == 0:  # * Wenn der Server läuft
+                    if (resMainServer == 0):
+                        currentMessage += self.getOnlineMessage(
+                            "mc.finnkrause.com", startedMainServer, "Mainserver")
                     else:
-                        print("[ " + str(datetime.datetime.now()) + " ] Server online")
-                    laststate = "online" #online ist der state, der nur eine einzige Ausfhrung hat!
+                        currentMessage += self.getOfflineMessage(
+                            isPCon, "Mainserver")
+                        with open(StartedMainServerPath, "w") as write:
+                            write.write("Manuell")
+
+                    if (resNewServer == 0):
+                        currentMessage += self.getOnlineMessage(
+                            "hiddenserver.finnkrause.com", startedNewServer, "HiddenServer")
+                    else:
+                        currentMessage += self.getOfflineMessage(
+                            isPCon, "HiddenServer")
+                        with open(StartedNewServerPath, "w") as write:
+                            write.write("Manuell")
+
+                    print("[ " + str(datetime.datetime.now()) +
+                          " ] Server online [--> Updated]")
+
+                    await message.edit(content=currentMessage)
+
                 else:
-                    socketsheesh = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    socketsheesh.settimeout(5)
-                    myres = socketsheesh.connect_ex((checkaddr, port_testserver))
-                    socketsheesh.settimeout(None)
-                    if myres == 0:
-                        if laststate == "online" or laststate == "offline pcoff" or Durchlauf == 0:
-                            await message.edit(content = f"> \n> Minecraft Server ist **offline!**\n> bereit: **!server start** \n> ⠀")
-                            print("[ " + str(datetime.datetime.now()) + " ] Server offline [--> Updated]")
-                            with open(path, "w") as write:
-                                write.write("Manuell")
-                        else:
-                            print("[ " + str(datetime.datetime.now()) + " ] Server offline")
-                        laststate = "offline pcon"
-                    else:
-                        if laststate == "online" or laststate == "offline pcon" or Durchlauf == 0:
-                            await message.edit(content = f"> \n> Minecraft Server ist **offline!**\n> ⠀")
-                            print("[ " + str(datetime.datetime.now()) + " ] Server offline [--> Updated]")
-                            with open(path, "w") as write:
-                                write.write("Manuell")
-                        else:
-                            print("[ " + str(datetime.datetime.now()) + " ] Server offline")
-                        laststate = "offline pcoff"
+                    currentMessage += self.getOfflineMessage(
+                        isPCon, "Mainserver")
+                    currentMessage += self.getOfflineMessage(
+                        isPCon, "HiddenServer")
+
+                    with open(StartedMainServerPath, "w") as write:
+                        write.write("Manuell")
+                    with open(StartedNewServerPath, "w") as write:
+                        write.write("Manuell")
+
+                    await message.edit(content=currentMessage)
 
                 time.sleep(15)
                 Durchlauf += 1
 
         finally:
-            await message.edit(content = "> \n> Discord-Bot ist **offline!**\n> ⠀")    
+            await message.edit(content="> \n> Discord-Bot ist **offline!**\n> ⠀")
+
 
 client = MyClient()
+token = ""
+with open("./token.txt", "r") as r:
+    token = r.readline()
 client.run(token)
